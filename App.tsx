@@ -1,16 +1,23 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import RNFS from "react-native-fs";
+
+const COUNTER_FILE_PATH = `${RNFS.DocumentDirectoryPath}/counter.txt`;
 
 const App = () => {
   const [count, setCount] = useState(0);
 
+  // Load the counter from file on startup
   useEffect(() => {
     const loadCount = async () => {
       try {
-        const savedCount = await AsyncStorage.getItem("counterValue");
-        if (savedCount !== null) {
-          setCount(parseInt(savedCount, 10)); // Convert to number
+        const exists = await RNFS.exists(COUNTER_FILE_PATH);
+        if (exists) {
+          const fileContents = await RNFS.readFile(COUNTER_FILE_PATH, "utf8");
+          const parsed = parseInt(fileContents, 10);
+          if (!isNaN(parsed)) {
+            setCount(parsed);
+          }
         }
       } catch (error) {
         console.error("Failed to load count:", error);
@@ -19,10 +26,11 @@ const App = () => {
     loadCount();
   }, []);
 
+  // Save to file whenever count changes
   useEffect(() => {
     const saveCount = async () => {
       try {
-        await AsyncStorage.setItem("counterValue", count.toString());
+        await RNFS.writeFile(COUNTER_FILE_PATH, count.toString(), "utf8");
       } catch (error) {
         console.error("Failed to save count:", error);
       }
@@ -35,14 +43,15 @@ const App = () => {
       <Text style={styles.counter}>{count}</Text>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={() => setCount(count < 999 ? count + 1 : count)}>
-          <Text style={styles.buttonText}>+</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.button} onPress={() => setCount(count > 0 ? count - 1 : count)}>
           <Text style={styles.buttonText}>-</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={() => setCount(count < 999 ? count + 1 : count)}>
+          <Text style={styles.buttonText}>+</Text>
+        </TouchableOpacity>
       </View>
+
       <TouchableOpacity style={styles.resetButton} onPress={() => setCount(0)}>
         <Text style={styles.buttonText}>Reset</Text>
       </TouchableOpacity>
